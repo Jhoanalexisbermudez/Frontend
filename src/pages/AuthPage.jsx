@@ -548,6 +548,75 @@ const styles = `
     border-bottom: 1px solid rgba(232,160,32,0.2);
   }
 
+  /* ===== SELECT (pregunta seguridad) ===== */
+  .auth-select {
+    width: 100%;
+    padding: 13px 16px 13px 42px;
+    background: rgba(4, 11, 6, 0.6);
+    border: 1px solid rgba(45,92,53,0.25);
+    border-bottom: 2px solid rgba(45,92,53,0.3);
+    color: var(--crema);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 300;
+    outline: none;
+    transition: all 0.3s;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+  .auth-select option {
+    background: #0a1f0e;
+    color: var(--crema);
+  }
+  .auth-select:focus {
+    border-color: rgba(232,160,32,0.2);
+    border-bottom-color: var(--naranja-cali);
+    background: rgba(4,11,6,0.85);
+  }
+
+  /* ===== FORGOT PASSWORD OVERLAY ===== */
+  .auth-forgot-overlay {
+    animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .auth-forgot-back {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none;
+    color: var(--opaco);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: color 0.25s;
+    padding: 0;
+  }
+  .auth-forgot-back:hover { color: var(--caña); }
+
+  .auth-step-indicator {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; margin-bottom: 20px;
+  }
+  .auth-step-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(45,92,53,0.3);
+    transition: all 0.3s;
+  }
+  .auth-step-dot.active {
+    background: var(--caña);
+    box-shadow: 0 0 8px rgba(232,160,32,0.4);
+  }
+  .auth-step-dot.done {
+    background: var(--verde-caña);
+  }
+  .auth-step-line {
+    width: 30px; height: 1px;
+    background: rgba(45,92,53,0.3);
+  }
+
   @media (max-width: 900px) {
     .auth-split { grid-template-columns: 1fr; }
     .auth-left { display: none; }
@@ -628,6 +697,21 @@ const ArrowIcon = () => (
     <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
   </svg>
 )
+const ArrowLeftIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+  </svg>
+)
+const ShieldIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+  </svg>
+)
+const QuestionIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+)
 const ErrorIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
     <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
@@ -654,6 +738,14 @@ const MountainIcon = () => (
   </svg>
 )
 
+const SECURITY_QUESTIONS = [
+  "¿Cómo se llama tu primera mascota?",
+  "¿Cuál es tu comida favorita?",
+  "¿En qué ciudad nació tu madre?",
+  "¿Cuál es el nombre de tu mejor amigo de infancia?",
+  "¿Cuál es el nombre de tu escuela primaria?"
+]
+
 export default function AuthPage() {
   const [tab, setTab] = useState("login")
   const navigate = useNavigate()
@@ -677,6 +769,20 @@ export default function AuthPage() {
   const [regLoading, setRegLoading] = useState(false)
   const [regError, setRegError] = useState("")
   const [regSuccess, setRegSuccess] = useState("")
+  const [regPregunta, setRegPregunta] = useState("")
+  const [regRespuesta, setRegRespuesta] = useState("")
+
+  // ===== FORGOT PASSWORD STATE =====
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotStep, setForgotStep] = useState(1) // 1=email, 2=answer+newpass
+  const [forgotEmail, setForgotEmail] = useState("")
+  const [forgotPregunta, setForgotPregunta] = useState("")
+  const [forgotRespuesta, setForgotRespuesta] = useState("")
+  const [forgotNewPass, setForgotNewPass] = useState("")
+  const [forgotConfirm, setForgotConfirm] = useState("")
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotError, setForgotError] = useState("")
+  const [forgotSuccess, setForgotSuccess] = useState("")
 
   // ===== HANDLERS =====
   const handleLogin = async (e) => {
@@ -717,12 +823,20 @@ export default function AuthPage() {
     setRegLoading(true)
     try {
       // Ajusta los nombres de campos según tu backend
+      if (!regPregunta || !regRespuesta.trim()) {
+        setRegError("Debes seleccionar una pregunta de seguridad y escribir tu respuesta")
+        setRegLoading(false)
+        return
+      }
+
       const payload = {
         nombre: regNombre,
         apellido: regApellido,
         email: regEmail,
         telefono: regTelefono,
         password: regPassword,
+        preguntaSeguridad: regPregunta,
+        respuestaSeguridad: regRespuesta,
       }
 
       const res = await api.post("/auth/register", payload)
@@ -753,6 +867,8 @@ export default function AuthPage() {
           setRegTelefono("")
           setRegPassword("")
           setRegConfirm("")
+          setRegPregunta("")
+          setRegRespuesta("")
         }, 2000)
       }
     } catch (err) {
@@ -782,6 +898,72 @@ export default function AuthPage() {
   }
 
   const strength = getPasswordStrength(regPassword)
+
+  // ===== FORGOT HANDLERS =====
+  const handleForgotStep1 = async (e) => {
+    e.preventDefault()
+    setForgotError("")
+    setForgotLoading(true)
+    try {
+      const res = await api.get("/auth/security-question", { params: { email: forgotEmail } })
+      setForgotPregunta(res.data.preguntaSeguridad)
+      setForgotStep(2)
+    } catch (err) {
+      setForgotError(err.response?.data?.error || "No se encontró el usuario o no tiene pregunta de seguridad")
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const handleForgotStep2 = async (e) => {
+    e.preventDefault()
+    setForgotError("")
+    if (forgotNewPass !== forgotConfirm) {
+      setForgotError("Las contraseñas no coinciden")
+      return
+    }
+    if (forgotNewPass.length < 6) {
+      setForgotError("La contraseña debe tener al menos 6 caracteres")
+      return
+    }
+    setForgotLoading(true)
+    try {
+      await api.post("/auth/reset-password-question", {
+        email: forgotEmail,
+        respuestaSeguridad: forgotRespuesta,
+        newPassword: forgotNewPass
+      })
+      setForgotSuccess("¡Contraseña restablecida exitosamente!")
+      setTimeout(() => {
+        setShowForgot(false)
+        setForgotStep(1)
+        setForgotEmail("")
+        setForgotPregunta("")
+        setForgotRespuesta("")
+        setForgotNewPass("")
+        setForgotConfirm("")
+        setForgotSuccess("")
+        setForgotError("")
+        setEmail(forgotEmail)
+      }, 2000)
+    } catch (err) {
+      setForgotError(err.response?.data?.error || "Error al restablecer la contraseña")
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const resetForgot = () => {
+    setShowForgot(false)
+    setForgotStep(1)
+    setForgotEmail("")
+    setForgotPregunta("")
+    setForgotRespuesta("")
+    setForgotNewPass("")
+    setForgotConfirm("")
+    setForgotError("")
+    setForgotSuccess("")
+  }
 
   return (
     <>
@@ -929,7 +1111,7 @@ export default function AuthPage() {
                       />
                       Recordarme
                     </label>
-                    <button type="button" className="auth-forgot">
+                    <button type="button" className="auth-forgot" onClick={() => { setShowForgot(true); setError(""); }}>
                       ¿Olvidaste tu contraseña?
                     </button>
                   </div>
@@ -961,6 +1143,166 @@ export default function AuthPage() {
                 >
                   Crear cuenta nueva
                 </button>
+
+                {/* ===== MODAL FORGOT PASSWORD ===== */}
+                {showForgot && (
+                  <div className="auth-forgot-overlay" style={{
+                    position: 'absolute', inset: 0, zIndex: 10,
+                    background: 'rgba(4,11,6,0.97)',
+                    display: 'flex', flexDirection: 'column',
+                    padding: '20px 0'
+                  }}>
+                    <button className="auth-forgot-back" onClick={resetForgot}>
+                      <ArrowLeftIcon /> Volver al login
+                    </button>
+
+                    <div className="auth-form-header">
+                      <div className="auth-form-divider">
+                        <div className="auth-form-div-line" />
+                        <div className="auth-form-div-dot" />
+                        <div className="auth-form-div-line" />
+                      </div>
+                      <h2 className="auth-form-title">
+                        {forgotSuccess ? "¡Listo!" : forgotStep === 1 ? "Recupera tu cuenta" : "Verifica tu identidad"}
+                      </h2>
+                      <p className="auth-form-subtitle">
+                        {forgotSuccess
+                          ? "Tu contraseña ha sido actualizada"
+                          : forgotStep === 1
+                            ? "Ingresa tu correo para buscar tu pregunta de seguridad"
+                            : "Responde correctamente para restablecer tu contraseña"}
+                      </p>
+                    </div>
+
+                    <div className="auth-step-indicator">
+                      <div className={`auth-step-dot ${forgotStep >= 1 ? (forgotStep > 1 ? 'done' : 'active') : ''}`} />
+                      <div className="auth-step-line" />
+                      <div className={`auth-step-dot ${forgotStep >= 2 ? 'active' : ''}`} />
+                    </div>
+
+                    {forgotSuccess ? (
+                      <div className="auth-success">
+                        <CheckIcon />
+                        {forgotSuccess}
+                      </div>
+                    ) : forgotStep === 1 ? (
+                      <form onSubmit={handleForgotStep1}>
+                        <div className="auth-field">
+                          <label className="auth-label">Correo electrónico</label>
+                          <div className="auth-input-wrap">
+                            <input
+                              className="auth-input"
+                              type="email"
+                              placeholder="correo@ejemplo.com"
+                              required
+                              value={forgotEmail}
+                              onChange={e => setForgotEmail(e.target.value)}
+                            />
+                            <div className="auth-input-icon"><EmailIcon /></div>
+                          </div>
+                        </div>
+
+                        {forgotError && (
+                          <div className="auth-error">
+                            <ErrorIcon />
+                            {forgotError}
+                          </div>
+                        )}
+
+                        <button className="auth-btn" type="submit" disabled={forgotLoading}>
+                          {forgotLoading
+                            ? <><div className="auth-spinner" /> Buscando...</>
+                            : <>Buscar pregunta <ArrowIcon /></>
+                          }
+                        </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleForgotStep2}>
+                        <div className="auth-field">
+                          <label className="auth-label">Pregunta de seguridad</label>
+                          <div style={{
+                            padding: '12px 16px',
+                            background: 'rgba(45,139,58,0.08)',
+                            border: '1px solid rgba(45,139,58,0.2)',
+                            borderLeft: '3px solid var(--caña)',
+                            color: 'var(--crema)',
+                            fontSize: '0.8rem',
+                            fontStyle: 'italic',
+                            lineHeight: 1.5
+                          }}>
+                            {forgotPregunta}
+                          </div>
+                        </div>
+
+                        <div className="auth-field">
+                          <label className="auth-label">Tu respuesta</label>
+                          <div className="auth-input-wrap">
+                            <input
+                              className="auth-input"
+                              type="text"
+                              placeholder="Escribe tu respuesta"
+                              required
+                              value={forgotRespuesta}
+                              onChange={e => setForgotRespuesta(e.target.value)}
+                            />
+                            <div className="auth-input-icon"><ShieldIcon /></div>
+                          </div>
+                        </div>
+
+                        <div className="auth-field">
+                          <label className="auth-label">Nueva contraseña</label>
+                          <div className="auth-input-wrap">
+                            <input
+                              className="auth-input"
+                              type="password"
+                              placeholder="Mínimo 6 caracteres"
+                              required
+                              value={forgotNewPass}
+                              onChange={e => setForgotNewPass(e.target.value)}
+                            />
+                            <div className="auth-input-icon"><LockIcon /></div>
+                          </div>
+                        </div>
+
+                        <div className="auth-field">
+                          <label className="auth-label">Confirmar nueva contraseña</label>
+                          <div className="auth-input-wrap">
+                            <input
+                              className="auth-input"
+                              type="password"
+                              placeholder="Repite tu contraseña"
+                              required
+                              value={forgotConfirm}
+                              onChange={e => setForgotConfirm(e.target.value)}
+                              style={
+                                forgotConfirm && forgotConfirm !== forgotNewPass
+                                  ? { borderBottomColor: '#c0392b' }
+                                  : forgotConfirm && forgotConfirm === forgotNewPass
+                                    ? { borderBottomColor: '#2d8b3a' }
+                                    : {}
+                              }
+                            />
+                            <div className="auth-input-icon"><LockIcon /></div>
+                          </div>
+                        </div>
+
+                        {forgotError && (
+                          <div className="auth-error">
+                            <ErrorIcon />
+                            {forgotError}
+                          </div>
+                        )}
+
+                        <button className="auth-btn" type="submit" disabled={forgotLoading}>
+                          {forgotLoading
+                            ? <><div className="auth-spinner" /> Verificando...</>
+                            : <>Restablecer contraseña <ArrowIcon /></>
+                          }
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                )}
               </>
             )}
 
@@ -1064,6 +1406,40 @@ export default function AuthPage() {
                         </span>
                       </>
                     )}
+                  </div>
+
+                  <div className="auth-field">
+                    <label className="auth-label">Pregunta de seguridad</label>
+                    <div className="auth-input-wrap">
+                      <select
+                        className="auth-select"
+                        required
+                        value={regPregunta}
+                        onChange={e => setRegPregunta(e.target.value)}
+                        style={{ paddingLeft: '42px' }}
+                      >
+                        <option value="">Selecciona una pregunta...</option>
+                        {SECURITY_QUESTIONS.map((q, i) => (
+                          <option key={i} value={q}>{q}</option>
+                        ))}
+                      </select>
+                      <div className="auth-input-icon"><QuestionIcon /></div>
+                    </div>
+                  </div>
+
+                  <div className="auth-field">
+                    <label className="auth-label">Respuesta de seguridad</label>
+                    <div className="auth-input-wrap">
+                      <input
+                        className="auth-input"
+                        type="text"
+                        placeholder="Tu respuesta secreta"
+                        required
+                        value={regRespuesta}
+                        onChange={e => setRegRespuesta(e.target.value)}
+                      />
+                      <div className="auth-input-icon"><ShieldIcon /></div>
+                    </div>
                   </div>
 
                   <div className="auth-field">
